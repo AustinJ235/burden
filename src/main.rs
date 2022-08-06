@@ -167,11 +167,17 @@ fn main() {
         if let Event::Key(KeyEvent { code, modifiers }) = event {
             if modifiers.contains(KeyModifiers::CONTROL) {
                 if let KeyCode::Char('c') = code {
+                    terminal::disable_raw_mode().unwrap();
+                    execute!(stdout(), cursor::Show).unwrap();
                     return;
                 }
             } else {
                 match code {
-                    KeyCode::Esc => return,
+                    KeyCode::Esc => {
+                        terminal::disable_raw_mode().unwrap();
+                        execute!(stdout(), cursor::Show).unwrap();
+                        return;
+                    },
                     KeyCode::Left if displaying > 0 => {
                         displaying -= 1;
                         scroll = 0;
