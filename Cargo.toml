@@ -1,0 +1,14 @@
+[package]
+name = "burden"
+version = "0.1.0"
+edition = "2021"
+authors = ["Austin Johsnon <me@austinj.work>"]
+repository = "https://github.com/AustinJ235/burden"
+description = "Error/Warning Pager for Cargo"
+license = "MIT/Apache-2.0"
+keywords = ["cli", "utility", "tool", "command"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+cargo_metadata = "0.15.0"
+crossterm = "0.24.0"
