@@ -12,12 +12,15 @@ extern crate crossterm;
 
 use cargo_metadata::{CompilerMessage, Message};
 use crossterm::cursor;
+use crossterm::event::KeyEventKind;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::style::{Print, Stylize};
 use crossterm::terminal::{self, Clear, ClearType};
 use std::env::args;
-use std::io::{stdout, BufReader, Write};
+use std::io::{self, stdout, BufReader, Write};
 use std::process::{Command, Stdio};
+use std::thread;
+use std::time::Duration;
 
 fn main() {
     let mut args = args();
@@ -28,69 +31,176 @@ fn main() {
 
     // Executable Path
     args.next().unwrap();
+    let mut subcommand: Option<String> = None;
+    let mut working_dir = String::from(".");
+    let mut color = String::from("always");
 
-    let cmd = match args.next() {
-        Some(cmd) => cmd,
-        None => return display_help(),
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "-V" | "--version" => {
+                print!("burden 0.2.0 (2022-08-25) / ");
+                let cargo_out = Command::new("cargo").arg("-V").output().unwrap();
+                stdout().write_all(&cargo_out.stdout).unwrap();
+                return;
+            }
+            "--working-dir" => match args.next() {
+                Some(dir) => working_dir = dir,
+                None => {
+                    println!("{}: The argument '--working-dir <DIRECTORY>' requires a value but none was supplied", "error".red());
+                    return;
+                }
+            },
+            "--color" => {
+                match args.next() {
+                    Some(when) => match when.as_str() {
+                        "auto" | "always" | "never" => color = when,
+                        _ => {
+                            println!("{}: The argument '--color <WHEN>' requires WHEN to be 'auto', 'always', or 'never'.", "error".red());
+                            return;
+                        }
+                    },
+                    None => {
+                        println!("{}: The argument '--color <WHEN>' requires a value but none was supplied", "error".red());
+                        return;
+                    }
+                }
+            }
+            "--help" | "-h" => {
+                display_help();
+                return;
+            }
+            "build" | "b" | "check" | "c" | "run" | "r" | "clippy" => {
+                subcommand = Some(arg);
+                break;
+            }
+            _ => {
+                if arg.starts_with("--working-dir=") {
+                    let dir = arg.split('=').nth(1).unwrap();
+
+                    if dir.is_empty() {
+                        println!("{}: The argument '--working-dir=<DIRECTORY>' requires a value but none was supplied", "error".red());
+                        return;
+                    }
+
+                    working_dir = dir.to_string();
+                } else if arg.starts_with("--color=") {
+                    let when = arg.split('=').nth(1).unwrap();
+
+                    if when.is_empty() {
+                        println!("{}: The argument '--color=<WHEN>' requires a value but none was supplied", "error".red());
+                        return;
+                    }
+
+                    match when {
+                        "auto" | "always" | "never" => color = when.to_string(),
+                        _ => {
+                            println!("{}: The argument '--color=<WHEN>' requires WHEN to be 'auto', 'always', or 'never'.", "error".red());
+                            return;
+                        }
+                    }
+                } else {
+                    println!("{}: Found argument '{}' which wasn't expected, or isn't valid in this context", "error".red(), arg);
+                    return;
+                }
+            }
+        }
+    }
+
+    let subcommand = match subcommand {
+        Some(some) => some,
+        None => {
+            display_help();
+            return;
+        }
     };
 
-    match cmd.as_str() {
-        "build" => (),
-        "check" => (),
-        "run" => (),
-        "clippy" => (),
-        "-h" | "--help" | "help" => {
-            display_help();
-            return;
-        }
-        _ => {
-            println!("{}: no such subcommand: '{}'", "error".red(), cmd);
-            return;
+    let mut subcommand_args: Vec<String> = match color.as_str() {
+        "always" | "auto" => vec![
+            "--message-format=json-diagnostic-rendered-ansi".to_string(),
+            "--color=always".to_string(),
+        ],
+        _ => vec![
+            "--message-format=json".to_string(),
+            "--color=never".to_string(),
+        ],
+    };
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--color" => match args.next() {
+                Some(_) => println!(
+                    "{}: Found argument '--color <WHEN>' which is overrided by burden.",
+                    "warning".dark_yellow()
+                ),
+                None => break,
+            },
+            "--message-format" => match args.next() {
+                Some(_) => println!(
+                    "{}: Found argument '--message-format <FMT>' which is overrided by burden.",
+                    "warning".dark_yellow()
+                ),
+                None => break,
+            },
+            "--help" | "-h" => {
+                let cargo_out = Command::new("cargo")
+                    .arg(subcommand)
+                    .arg(arg)
+                    .output()
+                    .unwrap();
+                stdout().write_all(&cargo_out.stdout).unwrap();
+                return;
+            }
+            _ => {
+                if arg.starts_with("--color=") {
+                    println!(
+                        "{}: Found argument '--color=<WHEN>' which is overrided by burden.",
+                        "warning".dark_yellow()
+                    );
+                } else if arg.starts_with("--message-format=") {
+                    println!(
+                        "{}: Found argument '--message-format=<FMT>' which is overrided by burden.",
+                        "warning".dark_yellow()
+                    );
+                } else {
+                    subcommand_args.push(arg);
+                }
+            }
         }
     }
 
-    let mut filtered_args: Vec<_> = Vec::new();
-    let mut color = String::from("--color=always");
-
-    for arg in args {
-        if arg == "-h" || arg == "--help" {
-            display_help();
-            return;
-        }
-
-        if arg.starts_with("--color") {
-            color = arg.to_string();
-        }
-
-        if !arg.starts_with("--message-format") {
-            filtered_args.push(arg);
-        }
-    }
-
-    let mut cmd_args = vec![
-        cmd,
-        color,
-        "--message-format=json-diagnostic-rendered-ansi".to_string(),
-    ];
-
-    cmd_args.append(&mut filtered_args);
+    let is_run_cmd = matches!(subcommand.as_str(), "run" | "r");
     let mut cmd = Command::new("cargo");
     cmd.stdout(Stdio::piped());
-    cmd.args(cmd_args);
-    let mut child = cmd.spawn().unwrap();
-    let output = BufReader::new(child.stdout.take().unwrap());
+    cmd.current_dir(working_dir);
+    cmd.arg(format!("--color={}", color));
+    cmd.arg(subcommand);
+    cmd.args(subcommand_args);
 
-    let messages: Vec<CompilerMessage> = Message::parse_stream(output)
-        .filter_map(|msg_r| {
-            if let Ok(Message::CompilerMessage(msg)) = msg_r {
-                Some(msg)
-            } else {
-                None
+    let mut child = cmd.spawn().unwrap();
+    let mut output = BufReader::new(child.stdout.take().unwrap());
+    let mut messages: Vec<CompilerMessage> = Vec::new();
+
+    for message in Message::parse_stream(&mut output).flatten() {
+        match message {
+            Message::CompilerMessage(compiler_msg) if compiler_msg.message.code.is_some() => {
+                messages.push(compiler_msg)
             }
-        })
-        .collect();
+            Message::BuildFinished(_) => {
+                thread::sleep(Duration::from_millis(100));
+                break;
+            }
+            _ => (),
+        }
+    }
 
     if messages.is_empty() {
+        if is_run_cmd {
+            thread::spawn(move || {
+                let _ = io::copy(&mut output, &mut stdout());
+            });
+        }
+
+        child.wait().unwrap();
         return;
     }
 
@@ -164,20 +274,26 @@ fn main() {
     display_message(0, 0);
 
     while let Ok(event) = event::read() {
-        if let Event::Key(KeyEvent { code, modifiers }) = event {
+        if let Event::Key(KeyEvent {
+            code,
+            modifiers,
+            kind: KeyEventKind::Press,
+            ..
+        }) = event
+        {
             if modifiers.contains(KeyModifiers::CONTROL) {
                 if let KeyCode::Char('c') = code {
                     terminal::disable_raw_mode().unwrap();
                     execute!(stdout(), cursor::Show).unwrap();
-                    return;
+                    break;
                 }
             } else {
                 match code {
                     KeyCode::Esc => {
                         terminal::disable_raw_mode().unwrap();
                         execute!(stdout(), cursor::Show).unwrap();
-                        return;
-                    },
+                        break;
+                    }
                     KeyCode::Left if displaying > 0 => {
                         displaying -= 1;
                         scroll = 0;
@@ -214,6 +330,12 @@ fn main() {
         }
     }
 
+    if is_run_cmd {
+        thread::spawn(move || {
+            let _ = io::copy(&mut output, &mut stdout());
+        });
+    }
+
     child.wait().unwrap();
 }
 
@@ -224,6 +346,12 @@ Error/Warning Pager for Cargo
 
 USAGE:
     burden [SUBCOMMAND] [SUBCOMMAND OPTIONS]
+
+OPTIONS:
+    -V, --version                    Print version info and exit
+        --color <WHEN>               Coloring: auto, always, never
+        --working-dir <DIRECTORY>    Directory to run cargo in
+    -h, --help                       Print help information
 
 Supported cargo commands are:
     build    Compile the current package
