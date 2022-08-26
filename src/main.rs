@@ -182,8 +182,14 @@ fn main() {
 
     for message in Message::parse_stream(&mut output).flatten() {
         match message {
-            Message::CompilerMessage(compiler_msg) if compiler_msg.message.code.is_some() => {
-                messages.push(compiler_msg)
+            Message::CompilerMessage(compiler_msg) => {
+                if compiler_msg.message.code.is_none() {
+                    if !compiler_msg.message.spans.is_empty() {
+                        messages.push(compiler_msg);
+                    }
+                } else {
+                    messages.push(compiler_msg);
+                }
             }
             Message::BuildFinished(_) => {
                 thread::sleep(Duration::from_millis(100));

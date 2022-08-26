@@ -1,3 +1,7 @@
+# Version 0.2.1 (August 26th, 2022)
+
+- Allow messages without error codes with a span to be displayed.
+
 # Version 0.2.0 (August 25th, 2022)
 
 - Added new options
