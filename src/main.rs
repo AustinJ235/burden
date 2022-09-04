@@ -10,17 +10,17 @@
 #[macro_use]
 extern crate crossterm;
 
-use cargo_metadata::{CompilerMessage, Message};
-use crossterm::cursor;
-use crossterm::event::KeyEventKind;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
-use crossterm::style::{Print, Stylize};
-use crossterm::terminal::{self, Clear, ClearType};
 use std::env::args;
 use std::io::{self, stdout, BufReader, Write};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
+
+use cargo_metadata::{CompilerMessage, Message};
+use crossterm::cursor;
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::style::{Print, Stylize};
+use crossterm::terminal::{self, Clear, ClearType};
 
 fn main() {
     let mut args = args();
@@ -42,43 +42,63 @@ fn main() {
                 let cargo_out = Command::new("cargo").arg("-V").output().unwrap();
                 stdout().write_all(&cargo_out.stdout).unwrap();
                 return;
-            }
-            "--working-dir" => match args.next() {
-                Some(dir) => working_dir = dir,
-                None => {
-                    println!("{}: The argument '--working-dir <DIRECTORY>' requires a value but none was supplied", "error".red());
-                    return;
+            },
+            "--working-dir" => {
+                match args.next() {
+                    Some(dir) => working_dir = dir,
+                    None => {
+                        println!(
+                            "{}: The argument '--working-dir <DIRECTORY>' requires a value but \
+                             none was supplied",
+                            "error".red()
+                        );
+                        return;
+                    },
                 }
             },
             "--color" => {
                 match args.next() {
-                    Some(when) => match when.as_str() {
-                        "auto" | "always" | "never" => color = when,
-                        _ => {
-                            println!("{}: The argument '--color <WHEN>' requires WHEN to be 'auto', 'always', or 'never'.", "error".red());
-                            return;
+                    Some(when) => {
+                        match when.as_str() {
+                            "auto" | "always" | "never" => color = when,
+                            _ => {
+                                println!(
+                                    "{}: The argument '--color <WHEN>' requires WHEN to be \
+                                     'auto', 'always', or 'never'.",
+                                    "error".red()
+                                );
+                                return;
+                            },
                         }
                     },
                     None => {
-                        println!("{}: The argument '--color <WHEN>' requires a value but none was supplied", "error".red());
+                        println!(
+                            "{}: The argument '--color <WHEN>' requires a value but none was \
+                             supplied",
+                            "error".red()
+                        );
                         return;
-                    }
+                    },
                 }
-            }
+            },
             "--help" | "-h" => {
                 display_help();
                 return;
-            }
+            },
             "build" | "b" | "check" | "c" | "run" | "r" | "clippy" => {
                 subcommand = Some(arg);
                 break;
-            }
+            },
             _ => {
                 if arg.starts_with("--working-dir=") {
                     let dir = arg.split('=').nth(1).unwrap();
 
                     if dir.is_empty() {
-                        println!("{}: The argument '--working-dir=<DIRECTORY>' requires a value but none was supplied", "error".red());
+                        println!(
+                            "{}: The argument '--working-dir=<DIRECTORY>' requires a value but \
+                             none was supplied",
+                            "error".red()
+                        );
                         return;
                     }
 
@@ -87,22 +107,35 @@ fn main() {
                     let when = arg.split('=').nth(1).unwrap();
 
                     if when.is_empty() {
-                        println!("{}: The argument '--color=<WHEN>' requires a value but none was supplied", "error".red());
+                        println!(
+                            "{}: The argument '--color=<WHEN>' requires a value but none was \
+                             supplied",
+                            "error".red()
+                        );
                         return;
                     }
 
                     match when {
                         "auto" | "always" | "never" => color = when.to_string(),
                         _ => {
-                            println!("{}: The argument '--color=<WHEN>' requires WHEN to be 'auto', 'always', or 'never'.", "error".red());
+                            println!(
+                                "{}: The argument '--color=<WHEN>' requires WHEN to be 'auto', \
+                                 'always', or 'never'.",
+                                "error".red()
+                            );
                             return;
-                        }
+                        },
                     }
                 } else {
-                    println!("{}: Found argument '{}' which wasn't expected, or isn't valid in this context", "error".red(), arg);
+                    println!(
+                        "{}: Found argument '{}' which wasn't expected, or isn't valid in this \
+                         context",
+                        "error".red(),
+                        arg
+                    );
                     return;
                 }
-            }
+            },
         }
     }
 
@@ -111,35 +144,48 @@ fn main() {
         None => {
             display_help();
             return;
-        }
+        },
     };
 
     let mut subcommand_args: Vec<String> = match color.as_str() {
-        "always" | "auto" => vec![
-            "--message-format=json-diagnostic-rendered-ansi".to_string(),
-            "--color=always".to_string(),
-        ],
-        _ => vec![
-            "--message-format=json".to_string(),
-            "--color=never".to_string(),
-        ],
+        "always" | "auto" => {
+            vec![
+                "--message-format=json-diagnostic-rendered-ansi".to_string(),
+                "--color=always".to_string(),
+            ]
+        },
+        _ => {
+            vec![
+                "--message-format=json".to_string(),
+                "--color=never".to_string(),
+            ]
+        },
     };
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--color" => match args.next() {
-                Some(_) => println!(
-                    "{}: Found argument '--color <WHEN>' which is overrided by burden.",
-                    "warning".dark_yellow()
-                ),
-                None => break,
+            "--color" => {
+                match args.next() {
+                    Some(_) => {
+                        println!(
+                            "{}: Found argument '--color <WHEN>' which is overrided by burden.",
+                            "warning".dark_yellow()
+                        )
+                    },
+                    None => break,
+                }
             },
-            "--message-format" => match args.next() {
-                Some(_) => println!(
-                    "{}: Found argument '--message-format <FMT>' which is overrided by burden.",
-                    "warning".dark_yellow()
-                ),
-                None => break,
+            "--message-format" => {
+                match args.next() {
+                    Some(_) => {
+                        println!(
+                            "{}: Found argument '--message-format <FMT>' which is overrided by \
+                             burden.",
+                            "warning".dark_yellow()
+                        )
+                    },
+                    None => break,
+                }
             },
             "--help" | "-h" => {
                 let cargo_out = Command::new("cargo")
@@ -149,7 +195,7 @@ fn main() {
                     .unwrap();
                 stdout().write_all(&cargo_out.stdout).unwrap();
                 return;
-            }
+            },
             _ => {
                 if arg.starts_with("--color=") {
                     println!(
@@ -164,7 +210,7 @@ fn main() {
                 } else {
                     subcommand_args.push(arg);
                 }
-            }
+            },
         }
     }
 
@@ -190,11 +236,11 @@ fn main() {
                 } else {
                     messages.push(compiler_msg);
                 }
-            }
+            },
             Message::BuildFinished(_) => {
                 thread::sleep(Duration::from_millis(100));
                 break;
-            }
+            },
             _ => (),
         }
     }
@@ -299,37 +345,37 @@ fn main() {
                         terminal::disable_raw_mode().unwrap();
                         execute!(stdout(), cursor::Show).unwrap();
                         break;
-                    }
+                    },
                     KeyCode::Left if displaying > 0 => {
                         displaying -= 1;
                         scroll = 0;
                         display_message(displaying, scroll);
-                    }
+                    },
                     KeyCode::Right if displaying < messages.len() - 1 => {
                         displaying += 1;
                         scroll = 0;
                         display_message(displaying, scroll);
-                    }
+                    },
                     KeyCode::Up => {
                         if scroll > 0 {
                             scroll -= 1;
                             display_message(displaying, scroll);
                         }
-                    }
+                    },
                     KeyCode::Down => {
                         scroll += 1;
                         display_message(displaying, scroll);
-                    }
+                    },
                     KeyCode::Home => {
                         displaying = 0;
                         scroll = 0;
                         display_message(displaying, scroll);
-                    }
+                    },
                     KeyCode::End => {
                         displaying = messages.len() - 1;
                         scroll = 0;
                         display_message(displaying, scroll);
-                    }
+                    },
                     _ => (),
                 }
             }
