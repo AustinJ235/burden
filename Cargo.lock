@@ -16,7 +16,7 @@ checksum = "1be3f42a67d6d345ecd59f675f3f012d6974981560836e938c22b424b85ce1be"
 
 [[package]]
 name = "burden"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "cargo_metadata",
  "crossterm",
