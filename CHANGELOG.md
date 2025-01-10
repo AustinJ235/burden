@@ -1,3 +1,9 @@
+# Version 0.3.0 (January 10th, 2025)
+
+- Update dependency `cargo_metadata` from `0.15` to `0.19`.
+- Update dependency `crossterm` from `0.25` to `0.28`.
+- Add carriage return to start of message line to fix messages displaying incorrectly.
+
 # Version 0.2.1 (August 26th, 2022)
 
 - Allow messages without error codes with a span to be displayed.

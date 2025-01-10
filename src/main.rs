@@ -312,7 +312,7 @@ fn main() {
             queue!(
                 stdout(),
                 match msg_lines.next() {
-                    Some(line) => Print(format!("{}\n", line)),
+                    Some(line) => Print(format!("\r{}\n", line)),
                     None => Print("\n".into()),
                 }
             )

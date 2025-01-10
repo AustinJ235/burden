@@ -1,6 +1,6 @@
 [package]
 name = "burden"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 authors = ["Austin Johsnon <me@austinj.work>"]
 repository = "https://github.com/AustinJ235/burden"
@@ -10,5 +10,5 @@ keywords = ["cli", "utility", "tool", "command"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-cargo_metadata = "0.15.0"
-crossterm = "0.25.0"
+cargo_metadata = "0.19"
+crossterm = "0.28.0"
